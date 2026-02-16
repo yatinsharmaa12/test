@@ -1,0 +1,155 @@
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  --glass: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --danger: #ef4444;
+  --success: #22c55e;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: var(--bg-gradient);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+}
+
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 2.5rem;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.input-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: white;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-control:focus {
+  border-color: var(--primary);
+}
+
+.btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn:hover {
+  background: var(--primary-hover);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+}
+
+.btn-secondary:hover {
+  background: var(--glass-border);
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Quiz Specific */
+.quiz-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.timer-bar {
+  height: 4px;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.option-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.option-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+}
+
+.option-card.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+}
