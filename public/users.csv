@@ -1,4 +1,5 @@
-email,password
-test@example.com,password123
-admin@quiz.com,adminpass
-user1@test.com,user1pass
+email,password,name,number,location
+test@example.com,password123,John Doe,+123456789,New York
+admin@quiz.com,adminpass,Admin User,+987654321,London
+user1@test.com,user1pass,Alice Smith,+112233445,Paris
+user2@test.com,user2pass,Bob Brown,+556677889,Tokyo

@@ -1,0 +1,14 @@
+{
+  "attempts": [
+    {
+      "email": "test@example.com",
+      "startTime": "2/17/2026, 4:26:39 AM",
+      "violations": 0,
+      "completed": true,
+      "endTime": "2/17/2026, 4:26:41 AM"
+    }
+  ],
+  "sessions": {
+    "test@example.com": 1
+  }
+}
