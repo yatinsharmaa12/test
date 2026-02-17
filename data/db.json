@@ -9,7 +9,8 @@
     }
   ],
   "sessions": {
-    "user1@test.com": 1
+    "user1@test.com": 1,
+    "user2@test.com": 1
   },
   "notifications": [],
   "blockedUsers": [],

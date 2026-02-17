@@ -28,6 +28,12 @@ export async function POST(request) {
 
         // Check session limit
         const db = readDB();
+
+        // Check if user is blocked
+        if (db.blockedUsers?.includes(email)) {
+            return NextResponse.json({ error: 'Your account has been blocked or restricted by the admin.' }, { status: 403 });
+        }
+
         const sessionCount = db.sessions[email] || 0;
 
         if (sessionCount >= 2) {
