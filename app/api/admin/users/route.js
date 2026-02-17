@@ -48,11 +48,19 @@ export async function POST(request) {
         }
 
         // Append new user
-        const newLine = `\n${email},${password},${name},${number || ''},${location || ''}`;
-        fs.appendFileSync(csvPath, newLine);
+        try {
+            const newLine = `\n${email},${password},${name},${number || ''},${location || ''}`;
+            fs.appendFileSync(csvPath, newLine);
+        } catch (fsErr) {
+            console.error('CSV Write error:', fsErr);
+            return NextResponse.json({
+                error: 'Database is read-only on this server (e.g. Vercel). Changes cannot be saved to CSV.'
+            }, { status: 403 });
+        }
 
         // Log the action
         const db = readDB();
+        if (!db.logs) db.logs = [];
         db.logs.push({
             timestamp: new Date().toLocaleString(),
             action: 'User Added',
@@ -64,6 +72,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Users POST error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }

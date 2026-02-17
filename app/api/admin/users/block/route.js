@@ -50,6 +50,6 @@ export async function DELETE(request) {
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Block DELETE error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }

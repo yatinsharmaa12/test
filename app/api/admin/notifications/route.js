@@ -42,6 +42,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true, notification });
     } catch (err) {
         console.error('Notifications POST error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }

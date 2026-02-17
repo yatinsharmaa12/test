@@ -43,7 +43,7 @@ export async function POST(request) {
         return NextResponse.json({ success: true, question });
     } catch (err) {
         console.error('Questions POST error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }
 
@@ -75,6 +75,6 @@ export async function DELETE(request) {
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Questions DELETE error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }
