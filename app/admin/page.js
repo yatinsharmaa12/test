@@ -6,7 +6,7 @@ import {
     Users, Bell, ShieldBan, SendHorizonal, UserPlus, UserCircle,
     ClipboardList, Trophy, FileText, HelpCircle, RefreshCw,
     CheckCircle, LogOut, Search, User, Phone, MapPin, Mail,
-    Trash2, Plus, Shield, Clock
+    Trash2, Plus, Shield, Clock, AlertTriangle
 } from 'lucide-react';
 import styles from './admin.module.css';
 
@@ -240,6 +240,21 @@ export default function AdminDashboard() {
                 loadLogs();
             }
         } catch { showAlert('error', 'Failed to delete question'); }
+    };
+
+    const handleResetData = async () => {
+        if (!confirm('Are you absolutely sure? This will delete ALL attempts and session counts permanently!')) return;
+        setLoading(true);
+        try {
+            const res = await fetch('/api/attempts/reset', { method: 'POST' });
+            if (res.ok) {
+                showAlert('success', 'System reset successful. All users can now give tests again.');
+                refreshAll();
+            } else {
+                showAlert('error', 'Reset failed');
+            }
+        } catch { showAlert('error', 'Reset failed'); }
+        setLoading(false);
     };
 
     // ===== Computed =====
@@ -630,9 +645,14 @@ export default function AdminDashboard() {
                 <div className={styles.sectionTitle}>
                     <Trophy size={20} /> Leaderboard
                 </div>
-                <button className={styles.refreshBtn} onClick={loadLeaderboard}>
-                    <RefreshCw size={14} /> Refresh
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button className={styles.dangerBtn} onClick={handleResetData} disabled={loading}>
+                        <Trash2 size={14} /> {loading ? 'Resetting...' : 'Reset All Data'}
+                    </button>
+                    <button className={styles.refreshBtn} onClick={loadLeaderboard}>
+                        <RefreshCw size={14} /> Refresh
+                    </button>
+                </div>
             </div>
             <table className={styles.dataTable}>
                 <thead>

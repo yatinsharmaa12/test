@@ -104,6 +104,7 @@ export async function PUT(request) {
         if (completed) {
             updateData.completed = true;
             updateData.end_time = new Date().toISOString();
+            console.log(`[Attempts API] Marking attempt for ${email} as completed. Score: ${score}/${total_questions}`);
         }
 
         let { error: updateError } = await supabase
@@ -112,9 +113,10 @@ export async function PUT(request) {
             .eq('id', latestAttempt.id);
 
         if (updateError) {
-            console.warn('Update error (might be missing columns):', updateError.message);
+            console.error('[Attempts API] Update error:', updateError.message);
             // If it failed due to missing columns, try updating only violations and completion
             if (updateError.code === '42703') { // Undefined column
+                console.warn('[Attempts API] Missing columns, falling back...');
                 const fallbackData = { violations: updateData.violations };
                 if (completed) {
                     fallbackData.completed = true;
@@ -124,7 +126,10 @@ export async function PUT(request) {
                     .from('attempts')
                     .update(fallbackData)
                     .eq('id', latestAttempt.id);
-                if (retryError) throw retryError;
+                if (retryError) {
+                    console.error('[Attempts API] Retry error:', retryError.message);
+                    throw retryError;
+                }
             } else {
                 throw updateError;
             }
@@ -135,8 +140,9 @@ export async function PUT(request) {
             await supabase.from('logs').insert({
                 action: 'Quiz Submitted',
                 user: email,
-                details: 'User completed quiz'
+                details: `User completed quiz with score ${score}/${total_questions}`
             });
+            console.log(`[Attempts API] Successfully submitted quiz for ${email}`);
         }
 
         return NextResponse.json({ success: true });

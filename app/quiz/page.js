@@ -190,10 +190,9 @@ export default function QuizPage() {
         });
 
         try {
-            await fetch('/api/attempts', {
+            const res = await fetch('/api/attempts', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                keepalive: true,
                 body: JSON.stringify({
                     email: user.email,
                     violations: violationCount,
@@ -202,11 +201,19 @@ export default function QuizPage() {
                     total_questions: questions.length
                 })
             });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                console.error('Submission failed:', errorData.error);
+                // Even if it fails, we should probably clear user and redirect? 
+                // Or let them try again? For now, we proceed to clear session to avoid stuck users.
+            }
         } catch (err) {
             console.error('Failed to submit quiz', err);
+        } finally {
+            sessionStorage.removeItem('quiz_user');
+            router.push('/');
         }
-        sessionStorage.removeItem('quiz_user');
-        router.push('/');
     };
 
     const formatTime = (seconds) => {
