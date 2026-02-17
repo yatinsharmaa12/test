@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 // GET: Fetch all notifications
 export async function GET() {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { data, error } = await supabase
             .from('notifications')
             .select('*')
@@ -29,6 +32,9 @@ export async function GET() {
 // POST: Create a new notification
 export async function POST(request) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { title, message } = await request.json();
 
         if (!title || !message) {

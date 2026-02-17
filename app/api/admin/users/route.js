@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 // GET: List all users with block status
 export async function GET() {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { data: users, error: usersError } = await supabase
             .from('users')
             .select('*');
@@ -31,6 +34,9 @@ export async function GET() {
 // POST: Add a new user
 export async function POST(request) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { email, password, name, number, location } = await request.json();
 
         if (!email || !password || !name) {

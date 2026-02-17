@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 // GET: Return quiz questions
 export async function GET() {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { data, error } = await supabase
             .from('questions')
             .select('*')
@@ -22,6 +25,9 @@ export async function GET() {
 // POST: Add a new question
 export async function POST(request) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { q, options, correct } = await request.json();
 
         if (!q || !options || options.length < 2 || correct === undefined) {
@@ -56,6 +62,9 @@ export async function POST(request) {
 // DELETE: Remove a question
 export async function DELETE(request) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { id } = await request.json();
 
         if (!id) {
