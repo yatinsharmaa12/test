@@ -305,26 +305,7 @@ export default function QuizPage() {
                                 });
 
                                 // Define local finish to avoid state lag
-                                const submitFinal = async () => {
-                                    try {
-                                        await fetch('/api/attempts', {
-                                            method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                email: user.email,
-                                                violations: violationCount,
-                                                completed: true,
-                                                score: score,
-                                                total_questions: questions.length
-                                            })
-                                        });
-                                    } catch (err) {
-                                        console.error('Failed to submit quiz', err);
-                                    }
-                                    sessionStorage.removeItem('quiz_user');
-                                    router.push('/');
-                                };
-                                submitFinal();
+                                finishQuiz(finalAnswers);
                             }
                         }}>
                             {opt}
