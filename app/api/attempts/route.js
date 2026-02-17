@@ -80,6 +80,7 @@ export async function PUT(request) {
             return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
         }
         const { email, violations, completed, score, total_questions } = await request.json();
+        console.log(`[Attempts API] Received PUT request for ${email}. Completed: ${completed}, Score: ${score}/${total_questions}, Violations: ${violations}`);
 
         // 1. Find the most recent incomplete attempt for this user
         const { data: latestAttempt, error: findError } = await supabase
@@ -92,7 +93,7 @@ export async function PUT(request) {
             .single();
 
         if (findError || !latestAttempt) {
-            console.error('[Attempts API] No active attempt found for:', email, findError?.message);
+            console.error('[Attempts API] Find Error:', findError?.message || 'No active attempt found');
             // If they are trying to complete but no active attempt, maybe it already completed?
             if (completed) {
                 return NextResponse.json({ success: true, message: 'Attempt already completed or not found' });
@@ -103,14 +104,13 @@ export async function PUT(request) {
         const updateData = {};
         if (violations !== undefined) updateData.violations = violations;
 
-        // Try to update with score if provided, but handle missing columns gracefully
-        if (score !== undefined) updateData.score = score;
-        if (total_questions !== undefined) updateData.total_questions = total_questions;
-
         if (completed) {
             updateData.completed = true;
             updateData.end_time = new Date().toISOString();
-            console.log(`[Attempts API] Marking attempt for ${email} as completed. Score: ${score}/${total_questions}`);
+            // Optional: only add these if they exist in schema, but fallback handles it too
+            if (score !== undefined) updateData.score = score;
+            if (total_questions !== undefined) updateData.total_questions = total_questions;
+            console.log(`[Attempts API] Preparing to mark as COMPLETED for ${email}. ID: ${latestAttempt.id}`);
         }
 
         let { error: updateError } = await supabase
@@ -119,23 +119,26 @@ export async function PUT(request) {
             .eq('id', latestAttempt.id);
 
         if (updateError) {
-            console.error('[Attempts API] Update error:', updateError.message);
-            // If it failed due to missing columns, try updating only violations and completion
-            if (updateError.code === '42703') { // Undefined column
-                console.warn('[Attempts API] Missing columns, falling back...');
-                const fallbackData = { violations: updateData.violations };
+            console.error('[Attempts API] Primary Update Error:', updateError.message, updateError.code);
+
+            // Fallback: if columns 'score' or 'total_questions' are missing (code 42703)
+            if (updateError.code === '42703') {
+                console.warn('[Attempts API] Schema mismatch detected, falling back to basic update...');
+                const basicUpdate = { violations: updateData.violations };
                 if (completed) {
-                    fallbackData.completed = true;
-                    fallbackData.end_time = updateData.end_time;
+                    basicUpdate.completed = true;
+                    basicUpdate.end_time = updateData.end_time;
                 }
                 const { error: retryError } = await supabase
                     .from('attempts')
-                    .update(fallbackData)
+                    .update(basicUpdate)
                     .eq('id', latestAttempt.id);
+
                 if (retryError) {
-                    console.error('[Attempts API] Retry error:', retryError.message);
+                    console.error('[Attempts API] Fallback Update Error:', retryError.message);
                     throw retryError;
                 }
+                console.log('[Attempts API] Fallback update succeeded.');
             } else {
                 throw updateError;
             }

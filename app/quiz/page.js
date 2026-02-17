@@ -190,6 +190,7 @@ export default function QuizPage() {
         });
 
         try {
+            console.log('[Quiz] Submitting to /api/attempts...', { email: user.email, score });
             const res = await fetch('/api/attempts', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -205,14 +206,24 @@ export default function QuizPage() {
             if (!res.ok) {
                 const errorData = await res.json();
                 console.error('Submission failed:', errorData.error);
-                // Even if it fails, we should probably clear user and redirect? 
-                // Or let them try again? For now, we proceed to clear session to avoid stuck users.
+                setWarning(`Critical: Submission failed (${errorData.error}). Please notify admin.`);
+                setIsSubmitting(false); // Let them try again
+                return;
             }
+
+            // Success! Wait a tiny bit to ensure state/network settles
+            await new Promise(r => setTimeout(r, 500));
         } catch (err) {
             console.error('Failed to submit quiz', err);
+            setWarning(`Submission error: ${err.message}. Please check your connection.`);
+            setIsSubmitting(false);
+            return;
         } finally {
-            sessionStorage.removeItem('quiz_user');
-            router.push('/');
+            // Only redirect if it didn't return early from error
+            if (isSubmitting) {
+                sessionStorage.removeItem('quiz_user');
+                router.push('/');
+            }
         }
     };
 
@@ -288,10 +299,15 @@ export default function QuizPage() {
                     <h2 style={{ marginBottom: '2rem', lineHeight: '1.4' }}>{questions[currentQuestion].q}</h2>
 
                     {questions[currentQuestion].options.map((opt, i) => (
-                        <div key={i} className={`option-card ${answers[currentQuestion] === i ? 'selected' : ''}`} onClick={() => {
-                            setAnswers(prev => ({ ...prev, [currentQuestion]: i }));
-                            setWarning(null);
-                        }}>
+                        <div
+                            key={i}
+                            className={`option-card ${answers[currentQuestion] == i ? 'selected' : ''}`}
+                            onClick={() => {
+                                console.log(`[Quiz] Selecting option ${i} for question ${currentQuestion}`);
+                                setAnswers(prev => ({ ...prev, [currentQuestion]: i }));
+                                setWarning(null);
+                            }}
+                        >
                             {opt}
                         </div>
                     ))}
@@ -301,7 +317,7 @@ export default function QuizPage() {
                             className="btn-outline"
                             onClick={() => setCurrentQuestion(curr => Math.max(0, curr - 1))}
                             disabled={currentQuestion === 0}
-                            style={{ opacity: currentQuestion === 0 ? 0.5 : 1 }}
+                            style={{ opacity: currentQuestion === 0 ? 0.3 : 1, width: 'auto', minWidth: '120px' }}
                         >
                             Previous
                         </button>
@@ -310,27 +326,27 @@ export default function QuizPage() {
                             <button
                                 className="btn"
                                 onClick={() => setCurrentQuestion(curr => curr + 1)}
+                                style={{ width: 'auto', minWidth: '120px' }}
                             >
                                 Next Question
                             </button>
                         ) : (
                             <button
                                 className="btn"
-                                style={{ background: '#16a34a' }}
-                                onClick={() => {
-                                    if (confirm('Are you sure you want to submit your quiz?')) {
-                                        finishQuiz();
-                                    }
-                                }}
+                                style={{ background: '#16a34a', width: 'auto', minWidth: '140px' }}
+                                onClick={() => finishQuiz()}
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
+                                {isSubmitting ? <RefreshCw size={16} className="rotating" /> : 'Submit Quiz'}
                             </button>
                         )}
                     </div>
 
-                    <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        <p>Logged in: {user.email}</p>
+                    <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                            <span>User: {user.email}</span>
+                            <span>Selected: {answers[currentQuestion] !== undefined ? `Option ${answers[currentQuestion] + 1}` : 'None'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
