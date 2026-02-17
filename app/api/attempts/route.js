@@ -121,8 +121,8 @@ export async function PUT(request) {
         if (updateError) {
             console.error('[Attempts API] Primary Update Error:', updateError.message, updateError.code);
 
-            // Fallback: if columns 'score' or 'total_questions' are missing (code 42703)
-            if (updateError.code === '42703') {
+            // Fallback: if columns 'score' or 'total_questions' are missing (code 42703 or PGRST204)
+            if (updateError.code === '42703' || updateError.code === 'PGRST204') {
                 console.warn('[Attempts API] Schema mismatch detected, falling back to basic update...');
                 const basicUpdate = { violations: updateData.violations };
                 if (completed) {
@@ -145,18 +145,54 @@ export async function PUT(request) {
         }
 
         if (completed) {
-            // Log completion
             await supabase.from('logs').insert({
-                action: 'Quiz Submitted',
+                action: 'Quiz Finished',
                 user: email,
-                details: `User completed quiz with score ${score}/${total_questions}`
+                details: `User completed quiz. Score: ${score}/${total_questions}`
             });
-            console.log(`[Attempts API] Successfully submitted quiz for ${email}`);
         }
 
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Attempts PUT error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
+    }
+}
+
+// DELETE: Remove a specific attempt
+export async function DELETE(request) {
+    try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
+        const { email } = await request.json();
+
+        if (!email) {
+            return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+        }
+
+        const { error } = await supabase
+            .from('attempts')
+            .delete()
+            .eq('email', email.trim());
+
+        if (error) throw error;
+
+        // Also reset session count for this user so they can retake it if needed
+        await supabase
+            .from('sessions')
+            .delete()
+            .eq('email', email.trim());
+
+        await supabase.from('logs').insert({
+            action: 'Attempt Deleted',
+            user: 'Admin',
+            details: `Removed attempt for ${email}`
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (err) {
+        console.error('Attempts DELETE error:', err);
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }

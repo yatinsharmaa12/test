@@ -183,11 +183,17 @@ export default function QuizPage() {
 
         // Calculate score
         let score = 0;
+        console.log('[Quiz] Calculating score for answers:', finalAnswers);
         questions.forEach((q, idx) => {
-            if (finalAnswers[idx] === q.correct) {
+            const selected = finalAnswers[idx];
+            const correct = q.correct;
+            const isCorrect = (selected == correct);
+            console.log(`[Quiz] Q${idx + 1}: Selected=${selected}, Correct=${correct}, Result=${isCorrect}`);
+            if (isCorrect) {
                 score++;
             }
         });
+        console.log(`[Quiz] Final Title Score: ${score}/${questions.length}`);
 
         try {
             console.log('[Quiz] Submitting to /api/attempts...', { email: user.email, score });
@@ -219,11 +225,9 @@ export default function QuizPage() {
             setIsSubmitting(false);
             return;
         } finally {
-            // Only redirect if it didn't return early from error
-            if (isSubmitting) {
-                sessionStorage.removeItem('quiz_user');
-                router.push('/');
-            }
+            // Remove state check that was blocking redirect due to stale closure
+            sessionStorage.removeItem('quiz_user');
+            router.push('/');
         }
     };
 

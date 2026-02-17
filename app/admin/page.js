@@ -242,6 +242,25 @@ export default function AdminDashboard() {
         } catch { showAlert('error', 'Failed to delete question'); }
     };
 
+    const handleDeleteAttempt = async (email) => {
+        if (!confirm(`Permanently remove all records for ${email}?`)) return;
+        setLoading(true);
+        try {
+            const res = await fetch('/api/attempts', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            if (res.ok) {
+                showAlert('success', `Removed records for ${email}`);
+                refreshAll();
+            } else {
+                showAlert('error', 'Failed to delete records');
+            }
+        } catch { showAlert('error', 'Failed to delete records'); }
+        setLoading(false);
+    };
+
     const handleResetData = async () => {
         if (!confirm('Are you absolutely sure? This will delete ALL attempts and session counts permanently!')) return;
         setLoading(true);
@@ -600,6 +619,7 @@ export default function AdminDashboard() {
                         <th>Violations</th>
                         <th>Score</th>
                         <th>Status</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -630,6 +650,11 @@ export default function AdminDashboard() {
                                             <RefreshCw size={12} className={styles.rotating} /> Live
                                         </span>
                                     )}
+                                </td>
+                                <td>
+                                    <button className={styles.dangerBtn} onClick={() => handleDeleteAttempt(a.email)}>
+                                        <Trash2 size={12} /> Delete
+                                    </button>
                                 </td>
                             </tr>
                         ))
@@ -664,6 +689,7 @@ export default function AdminDashboard() {
                         <th>Score</th>
                         <th>Time Taken</th>
                         <th>Submitted At</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -689,6 +715,11 @@ export default function AdminDashboard() {
                                 </td>
                                 <td>{entry.timeTaken}</td>
                                 <td>{entry.submittedAt}</td>
+                                <td>
+                                    <button className={styles.dangerBtn} onClick={() => handleDeleteAttempt(entry.email)}>
+                                        <Trash2 size={12} /> Remove
+                                    </button>
+                                </td>
                             </tr>
                         ))
                     )}

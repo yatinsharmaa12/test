@@ -16,13 +16,26 @@ export async function GET() {
             users.forEach(u => userMap[u.email] = u.name);
         }
 
-        // 2. Get completed attempts
-        const { data: attempts, error: attemptsError } = await supabase
+        // 2. Get completed attempts (selecting specifically known columns)
+        let { data: attempts, error: attemptsError } = await supabase
             .from('attempts')
-            .select('*')
+            .select('email, violations, completed, start_time, end_time, score, total_questions')
             .eq('completed', true);
 
-        if (attemptsError) throw attemptsError;
+        if (attemptsError) {
+            console.error('[Leaderboard API] Query error:', attemptsError.message);
+            // Fallback if score/total_questions are missing
+            if (attemptsError.code === 'PGRST204' || attemptsError.code === '42703') {
+                const { data: fallbackAttempts, error: fallbackError } = await supabase
+                    .from('attempts')
+                    .select('email, violations, completed, start_time, end_time')
+                    .eq('completed', true);
+                if (fallbackError) throw fallbackError;
+                attempts = fallbackAttempts;
+            } else {
+                throw attemptsError;
+            }
+        }
 
         const leaderboard = (attempts || []).map((attempt) => {
             let timeTaken = 'N/A';
