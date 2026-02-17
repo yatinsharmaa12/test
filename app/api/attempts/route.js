@@ -68,7 +68,7 @@ export async function POST(request) {
 // PUT: Update an existing attempt (violations, completion)
 export async function PUT(request) {
     try {
-        const { email, violations, completed } = await request.json();
+        const { email, violations, completed, score, total_questions } = await request.json();
 
         // 1. Find the most recent incomplete attempt for this user
         const { data: latestAttempt, error: findError } = await supabase
@@ -86,6 +86,9 @@ export async function PUT(request) {
 
         const updateData = {};
         if (violations !== undefined) updateData.violations = violations;
+        if (score !== undefined) updateData.score = score;
+        if (total_questions !== undefined) updateData.total_questions = total_questions;
+
         if (completed) {
             updateData.completed = true;
             updateData.end_time = new Date().toISOString();

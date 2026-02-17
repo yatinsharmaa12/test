@@ -583,12 +583,13 @@ export default function AdminDashboard() {
                         <th>End Time</th>
                         <th>Sessions</th>
                         <th>Violations</th>
+                        <th>Score</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {attempts.length === 0 ? (
-                        <tr><td colSpan="6" className={styles.emptyRow}>No submissions yet</td></tr>
+                        <tr><td colSpan="7" className={styles.emptyRow}>No submissions yet</td></tr>
                     ) : (
                         attempts.map((a, i) => (
                             <tr key={i}>
@@ -600,6 +601,9 @@ export default function AdminDashboard() {
                                     <span className={`${styles.violationBadge} ${getViolationClass(a.violations)}`}>
                                         {a.violations}
                                     </span>
+                                </td>
+                                <td style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                                    {a.score !== undefined ? `${a.score} / ${a.total_questions || '?'}` : '—'}
                                 </td>
                                 <td>
                                     {a.completed ? (
@@ -637,13 +641,14 @@ export default function AdminDashboard() {
                         <th>Name</th>
                         <th>Email</th>
                         <th>Violations</th>
+                        <th>Score</th>
                         <th>Time Taken</th>
                         <th>Submitted At</th>
                     </tr>
                 </thead>
                 <tbody>
                     {leaderboard.length === 0 ? (
-                        <tr><td colSpan="6" className={styles.emptyRow}>No completed quizzes yet</td></tr>
+                        <tr><td colSpan="7" className={styles.emptyRow}>No completed quizzes yet</td></tr>
                     ) : (
                         leaderboard.map((entry, i) => (
                             <tr key={i}>
@@ -658,6 +663,9 @@ export default function AdminDashboard() {
                                     <span className={`${styles.violationBadge} ${getViolationClass(entry.violations)}`}>
                                         {entry.violations}
                                     </span>
+                                </td>
+                                <td style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                                    {entry.score} / {entry.totalQuestions}
                                 </td>
                                 <td>{entry.timeTaken}</td>
                                 <td>{entry.submittedAt}</td>

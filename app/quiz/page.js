@@ -174,18 +174,34 @@ export default function QuizPage() {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, [quizStarted]);
 
+    const [answers, setAnswers] = useState({});
+
     const finishQuiz = async () => {
+        // Calculate score
+        let score = 0;
+        questions.forEach((q, idx) => {
+            if (answers[idx] === q.correct) {
+                score++;
+            }
+        });
+
         try {
             await fetch('/api/attempts', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: user.email, violations: violationCount, completed: true })
+                body: JSON.stringify({
+                    email: user.email,
+                    violations: violationCount,
+                    completed: true,
+                    score: score,
+                    total_questions: questions.length
+                })
             });
         } catch (err) {
             console.error('Failed to submit quiz', err);
         }
         sessionStorage.removeItem('quiz_user');
-        alert("Quiz Submitted. Thank you!");
+        alert(`Quiz Submitted. Your score: ${score}/${questions.length}`);
         router.push('/');
     };
 
@@ -261,12 +277,51 @@ export default function QuizPage() {
                     <h2 style={{ marginBottom: '2rem', lineHeight: '1.4' }}>{questions[currentQuestion].q}</h2>
 
                     {questions[currentQuestion].options.map((opt, i) => (
-                        <div key={i} className="option-card" onClick={() => {
+                        <div key={i} className={`option-card ${answers[currentQuestion] === i ? 'selected' : ''}`} onClick={() => {
+                            setAnswers(prev => ({ ...prev, [currentQuestion]: i }));
                             if (currentQuestion < questions.length - 1) {
                                 setCurrentQuestion(curr => curr + 1);
                                 setWarning(null);
                             } else {
-                                finishQuiz();
+                                // We don't call finishQuiz immediately to allow review? 
+                                // Actually the current logic proceeds to next. Let's stick to it but ensure score is calculated.
+                                // Instead of finishQuiz here, maybe we need a "Submit" button on last question.
+                                // But I will follow the existing flow: last click = submit.
+
+                                // To be safe, let's update state AND then finish.
+                                // However, state update is async. Let's pass the final answers locally.
+                                const finalAnswers = { ...answers, [currentQuestion]: i };
+
+                                // Calculate score locally for the final submit
+                                let score = 0;
+                                questions.forEach((q, idx) => {
+                                    if (finalAnswers[idx] === q.correct) {
+                                        score++;
+                                    }
+                                });
+
+                                // Define local finish to avoid state lag
+                                const submitFinal = async () => {
+                                    try {
+                                        await fetch('/api/attempts', {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                email: user.email,
+                                                violations: violationCount,
+                                                completed: true,
+                                                score: score,
+                                                total_questions: questions.length
+                                            })
+                                        });
+                                    } catch (err) {
+                                        console.error('Failed to submit quiz', err);
+                                    }
+                                    sessionStorage.removeItem('quiz_user');
+                                    alert(`Quiz Submitted. Your score: ${score}/${questions.length}`);
+                                    router.push('/');
+                                };
+                                submitFinal();
                             }
                         }}>
                             {opt}

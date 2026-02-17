@@ -39,14 +39,18 @@ export async function GET() {
                 email: attempt.email,
                 name: userMap[attempt.email] || 'Unknown',
                 violations: attempt.violations || 0,
+                score: attempt.score || 0,
+                totalQuestions: attempt.total_questions || 0,
                 timeTaken,
                 submittedAt: attempt.end_time ? new Date(attempt.end_time).toLocaleString() : '—'
             };
         });
 
-        // Sort by violations (fewer = better), then by time taken
-        // We can just use violations for now as primary sort
-        leaderboard.sort((a, b) => a.violations - b.violations);
+        // Sort by score (desc), then violations (asc), then time taken
+        leaderboard.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return a.violations - b.violations;
+        });
 
         // Assign rank
         leaderboard.forEach((entry, i) => entry.rank = i + 1);
