@@ -201,7 +201,6 @@ export default function QuizPage() {
             console.error('Failed to submit quiz', err);
         }
         sessionStorage.removeItem('quiz_user');
-        alert(`Quiz Submitted. Your score: ${score}/${questions.length}`);
         router.push('/');
     };
 
@@ -318,7 +317,6 @@ export default function QuizPage() {
                                         console.error('Failed to submit quiz', err);
                                     }
                                     sessionStorage.removeItem('quiz_user');
-                                    alert(`Quiz Submitted. Your score: ${score}/${questions.length}`);
                                     router.push('/');
                                 };
                                 submitFinal();
