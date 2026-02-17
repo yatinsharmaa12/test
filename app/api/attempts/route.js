@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 // GET: Return all attempts and session counts
 export async function GET() {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { data: attempts, error: attemptsError } = await supabase
             .from('attempts')
             .select('*')
@@ -37,6 +40,9 @@ export async function GET() {
 // POST: Create a new attempt
 export async function POST(request) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { email } = await request.json();
 
         const { data, error } = await supabase
@@ -68,6 +74,9 @@ export async function POST(request) {
 // PUT: Update an existing attempt (violations, completion)
 export async function PUT(request) {
     try {
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+        }
         const { email, violations, completed, score, total_questions } = await request.json();
 
         // 1. Find the most recent incomplete attempt for this user
@@ -80,12 +89,15 @@ export async function PUT(request) {
             .limit(1)
             .single();
 
-        if (!latestAttempt) {
+        if (findError || !latestAttempt) {
+            console.error('Find attempt error:', findError);
             return NextResponse.json({ error: 'No active attempt found' }, { status: 404 });
         }
 
         const updateData = {};
         if (violations !== undefined) updateData.violations = violations;
+
+        // Try to update with score if provided, but handle missing columns gracefully
         if (score !== undefined) updateData.score = score;
         if (total_questions !== undefined) updateData.total_questions = total_questions;
 
@@ -94,12 +106,29 @@ export async function PUT(request) {
             updateData.end_time = new Date().toISOString();
         }
 
-        const { error: updateError } = await supabase
+        let { error: updateError } = await supabase
             .from('attempts')
             .update(updateData)
             .eq('id', latestAttempt.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+            console.warn('Update error (might be missing columns):', updateError.message);
+            // If it failed due to missing columns, try updating only violations and completion
+            if (updateError.code === '42703') { // Undefined column
+                const fallbackData = { violations: updateData.violations };
+                if (completed) {
+                    fallbackData.completed = true;
+                    fallbackData.end_time = updateData.end_time;
+                }
+                const { error: retryError } = await supabase
+                    .from('attempts')
+                    .update(fallbackData)
+                    .eq('id', latestAttempt.id);
+                if (retryError) throw retryError;
+            } else {
+                throw updateError;
+            }
+        }
 
         if (completed) {
             // Log completion

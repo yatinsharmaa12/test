@@ -27,7 +27,7 @@ export default function QuizPage() {
 
     // Sync violations to server
     useEffect(() => {
-        if (!quizStarted || !user) return;
+        if (!quizStarted || !user || isSubmitting) return;
 
         const syncViolations = async () => {
             try {
@@ -175,12 +175,16 @@ export default function QuizPage() {
     }, [quizStarted]);
 
     const [answers, setAnswers] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const finishQuiz = async () => {
+    const finishQuiz = async (finalAnswers = answers) => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
         // Calculate score
         let score = 0;
         questions.forEach((q, idx) => {
-            if (answers[idx] === q.correct) {
+            if (finalAnswers[idx] === q.correct) {
                 score++;
             }
         });
@@ -189,6 +193,7 @@ export default function QuizPage() {
             await fetch('/api/attempts', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                keepalive: true,
                 body: JSON.stringify({
                     email: user.email,
                     violations: violationCount,
