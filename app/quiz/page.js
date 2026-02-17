@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Maximize, AlertTriangle, CheckCircle, PlayCircle, Clock, Monitor } from 'lucide-react';
+import { Maximize, AlertTriangle, CheckCircle, PlayCircle, Clock, Monitor, RefreshCw } from 'lucide-react';
 
 export default function QuizPage() {
     const router = useRouter();
