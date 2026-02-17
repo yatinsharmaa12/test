@@ -1,11 +1,31 @@
 import { NextResponse } from 'next/server';
-import { readDB, writeDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
-// GET: Return all attempts
+// GET: Return all attempts and session counts
 export async function GET() {
     try {
-        const db = readDB();
-        return NextResponse.json({ attempts: db.attempts, sessions: db.sessions });
+        const { data: attempts, error: attemptsError } = await supabase
+            .from('attempts')
+            .select('*')
+            .order('start_time', { ascending: false });
+
+        const { data: sessionsData, error: sessionsError } = await supabase
+            .from('sessions')
+            .select('*');
+
+        const sessionsMap = {};
+        if (sessionsData) {
+            sessionsData.forEach(s => sessionsMap[s.email] = s.count);
+        }
+
+        // Format dates to locale string as expected by frontend
+        const formattedAttempts = (attempts || []).map(a => ({
+            ...a,
+            startTime: a.start_time ? new Date(a.start_time).toLocaleString() : null,
+            endTime: a.end_time ? new Date(a.end_time).toLocaleString() : null
+        }));
+
+        return NextResponse.json({ attempts: formattedAttempts, sessions: sessionsMap });
     } catch (err) {
         console.error('Attempts GET error:', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -16,17 +36,27 @@ export async function GET() {
 export async function POST(request) {
     try {
         const { email } = await request.json();
-        const db = readDB();
 
-        db.attempts.push({
-            email,
-            startTime: new Date().toLocaleString(),
-            violations: 0,
-            completed: false
+        const { data, error } = await supabase
+            .from('attempts')
+            .insert({
+                email,
+                violations: 0,
+                completed: false
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Log the action
+        await supabase.from('logs').insert({
+            action: 'Quiz Started',
+            user: email,
+            details: 'User started quiz attempt'
         });
 
-        writeDB(db);
-        return NextResponse.json({ success: true, attemptIndex: db.attempts.length - 1 });
+        return NextResponse.json({ success: true, attemptId: data.id });
     } catch (err) {
         console.error('Attempts POST error:', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -37,30 +67,44 @@ export async function POST(request) {
 export async function PUT(request) {
     try {
         const { email, violations, completed } = await request.json();
-        const db = readDB();
 
-        // Find the most recent incomplete attempt for this user
-        let idx = -1;
-        for (let i = db.attempts.length - 1; i >= 0; i--) {
-            if (db.attempts[i].email === email && !db.attempts[i].completed) {
-                idx = i;
-                break;
-            }
-        }
+        // 1. Find the most recent incomplete attempt for this user
+        const { data: latestAttempt, error: findError } = await supabase
+            .from('attempts')
+            .select('*')
+            .eq('email', email)
+            .eq('completed', false)
+            .order('start_time', { ascending: false })
+            .limit(1)
+            .single();
 
-        if (idx === -1) {
+        if (!latestAttempt) {
             return NextResponse.json({ error: 'No active attempt found' }, { status: 404 });
         }
 
-        if (violations !== undefined) {
-            db.attempts[idx].violations = violations;
-        }
+        const updateData = {};
+        if (violations !== undefined) updateData.violations = violations;
         if (completed) {
-            db.attempts[idx].completed = true;
-            db.attempts[idx].endTime = new Date().toLocaleString();
+            updateData.completed = true;
+            updateData.end_time = new Date().toISOString();
         }
 
-        writeDB(db);
+        const { error: updateError } = await supabase
+            .from('attempts')
+            .update(updateData)
+            .eq('id', latestAttempt.id);
+
+        if (updateError) throw updateError;
+
+        if (completed) {
+            // Log completion
+            await supabase.from('logs').insert({
+                action: 'Quiz Submitted',
+                user: email,
+                details: 'User completed quiz'
+            });
+        }
+
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Attempts PUT error:', err);

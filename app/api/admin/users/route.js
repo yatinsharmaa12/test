@@ -1,26 +1,23 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import Papa from 'papaparse';
-import { readDB, writeDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 // GET: List all users with block status
 export async function GET() {
     try {
-        const csvPath = path.join(process.cwd(), 'public', 'users.csv');
-        const csvText = fs.readFileSync(csvPath, 'utf-8');
-        const { data: users } = Papa.parse(csvText, { header: true });
-        const db = readDB();
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('*');
 
-        const usersWithStatus = users
-            .filter(u => u.email)
-            .map(u => ({
-                email: u.email,
-                name: u.name,
-                number: u.number,
-                location: u.location,
-                blocked: db.blockedUsers.includes(u.email)
-            }));
+        const { data: blocked, error: blockedError } = await supabase
+            .from('blocked_users')
+            .select('email');
+
+        const blockedEmails = new Set((blocked || []).map(b => b.email));
+
+        const usersWithStatus = (users || []).map(u => ({
+            ...u,
+            blocked: blockedEmails.has(u.email)
+        }));
 
         return NextResponse.json({ users: usersWithStatus });
     } catch (err) {
@@ -29,7 +26,7 @@ export async function GET() {
     }
 }
 
-// POST: Add a new user to CSV
+// POST: Add a new user
 export async function POST(request) {
     try {
         const { email, password, name, number, location } = await request.json();
@@ -38,36 +35,25 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Email, password, and name are required' }, { status: 400 });
         }
 
-        const csvPath = path.join(process.cwd(), 'public', 'users.csv');
-        const csvText = fs.readFileSync(csvPath, 'utf-8');
-        const { data: users } = Papa.parse(csvText, { header: true });
+        const { data, error } = await supabase
+            .from('users')
+            .insert({ email, password, name, number, location })
+            .select()
+            .single();
 
-        // Check if user already exists
-        if (users.find(u => u.email === email)) {
-            return NextResponse.json({ error: 'User already exists' }, { status: 409 });
-        }
-
-        // Append new user
-        try {
-            const newLine = `\n${email},${password},${name},${number || ''},${location || ''}`;
-            fs.appendFileSync(csvPath, newLine);
-        } catch (fsErr) {
-            console.error('CSV Write error:', fsErr);
-            return NextResponse.json({
-                error: 'Database is read-only on this server (e.g. Vercel). Changes cannot be saved to CSV.'
-            }, { status: 403 });
+        if (error) {
+            if (error.code === '23505') { // Unique constraint violation
+                return NextResponse.json({ error: 'User already exists' }, { status: 409 });
+            }
+            throw error;
         }
 
         // Log the action
-        const db = readDB();
-        if (!db.logs) db.logs = [];
-        db.logs.push({
-            timestamp: new Date().toLocaleString(),
+        await supabase.from('logs').insert({
             action: 'User Added',
             user: email,
             details: `New user "${name}" added by admin`
         });
-        writeDB(db);
 
         return NextResponse.json({ success: true });
     } catch (err) {

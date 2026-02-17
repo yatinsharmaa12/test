@@ -66,23 +66,26 @@ export default function QuizPage() {
         return () => window.removeEventListener('resize', checkMultiScreen);
     }, []);
 
-    const questions = [
-        {
-            q: "Which property is used in CSS to detect user's color scheme preference?",
-            options: ["@media (prefers-color-scheme)", "@theme", "color-query", "scheme-detect"],
-            correct: 0
-        },
-        {
-            q: "What does the screen sharing API primarily provide for anti-cheating?",
-            options: ["Remote control", "Visual record of activity", "Keyboard logging", "IP tracking"],
-            correct: 1
-        },
-        {
-            q: "Which event is triggered when a user switches tabs in a browser?",
-            options: ["tabchange", "visibilitychange", "window-switch", "blur-detect"],
-            correct: 1
-        }
-    ];
+    const [questions, setQuestions] = useState([]);
+    const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
+
+    // Fetch questions from Supabase
+    useEffect(() => {
+        const loadQuestions = async () => {
+            try {
+                const res = await fetch('/api/admin/questions');
+                const data = await res.json();
+                if (data.questions) {
+                    setQuestions(data.questions);
+                }
+            } catch (err) {
+                console.error('Failed to load questions', err);
+            } finally {
+                setIsLoadingQuestions(false);
+            }
+        };
+        loadQuestions();
+    }, []);
 
     const enterFullscreen = async () => {
         if (isMultiScreen) {
@@ -192,7 +195,14 @@ export default function QuizPage() {
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
-    if (!user) return null;
+    if (!user || isLoadingQuestions) return (
+        <div className="app-main">
+            <div className="glass-card animate-fade-in" style={{ padding: '2rem', textAlign: 'center' }}>
+                <RefreshCw size={32} className="rotating" style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
+                <p>Preparing Secure Environment...</p>
+            </div>
+        </div>
+    );
 
     if (isMultiScreen && !quizStarted) {
         return (

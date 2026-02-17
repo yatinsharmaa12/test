@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readDB, writeDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 // POST: Block a user
 export async function POST(request) {
@@ -9,23 +9,22 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
         }
 
-        const db = readDB();
+        const { error } = await supabase
+            .from('blocked_users')
+            .upsert({ email });
 
-        if (!db.blockedUsers.includes(email)) {
-            db.blockedUsers.push(email);
-            db.logs.push({
-                timestamp: new Date().toLocaleString(),
-                action: 'User Blocked',
-                user: email,
-                details: `User blocked by admin`
-            });
-            writeDB(db);
-        }
+        if (error) throw error;
+
+        await supabase.from('logs').insert({
+            action: 'User Blocked',
+            user: email,
+            details: `User blocked by admin`
+        });
 
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error('Block POST error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }
 
@@ -37,15 +36,18 @@ export async function DELETE(request) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
         }
 
-        const db = readDB();
-        db.blockedUsers = db.blockedUsers.filter(e => e !== email);
-        db.logs.push({
-            timestamp: new Date().toLocaleString(),
+        const { error } = await supabase
+            .from('blocked_users')
+            .delete()
+            .eq('email', email);
+
+        if (error) throw error;
+
+        await supabase.from('logs').insert({
             action: 'User Unblocked',
             user: email,
             details: `User unblocked by admin`
         });
-        writeDB(db);
 
         return NextResponse.json({ success: true });
     } catch (err) {

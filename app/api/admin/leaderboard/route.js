@@ -1,32 +1,32 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import Papa from 'papaparse';
-import { readDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 // GET: Return leaderboard data derived from completed attempts
 export async function GET() {
     try {
-        const db = readDB();
-
-        // Get user names from CSV
-        const csvPath = path.join(process.cwd(), 'public', 'users.csv');
-        const csvText = fs.readFileSync(csvPath, 'utf-8');
-        const { data: users } = Papa.parse(csvText, { header: true });
+        // 1. Get all users
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('email, name');
 
         const userMap = {};
-        users.forEach(u => {
-            if (u.email) userMap[u.email] = u.name;
-        });
+        if (users) {
+            users.forEach(u => userMap[u.email] = u.name);
+        }
 
-        // Build leaderboard from completed attempts
-        const completedAttempts = db.attempts.filter(a => a.completed);
-        const leaderboard = completedAttempts.map((attempt, index) => {
-            // Calculate time taken if endTime and startTime exist
+        // 2. Get completed attempts
+        const { data: attempts, error: attemptsError } = await supabase
+            .from('attempts')
+            .select('*')
+            .eq('completed', true);
+
+        if (attemptsError) throw attemptsError;
+
+        const leaderboard = (attempts || []).map((attempt) => {
             let timeTaken = 'N/A';
-            if (attempt.startTime && attempt.endTime) {
-                const start = new Date(attempt.startTime);
-                const end = new Date(attempt.endTime);
+            if (attempt.start_time && attempt.end_time) {
+                const start = new Date(attempt.start_time);
+                const end = new Date(attempt.end_time);
                 const diff = Math.round((end - start) / 1000);
                 const mins = Math.floor(diff / 60);
                 const secs = diff % 60;
@@ -34,17 +34,19 @@ export async function GET() {
             }
 
             return {
-                rank: index + 1,
                 email: attempt.email,
                 name: userMap[attempt.email] || 'Unknown',
                 violations: attempt.violations || 0,
                 timeTaken,
-                submittedAt: attempt.endTime || attempt.startTime
+                submittedAt: attempt.end_time ? new Date(attempt.end_time).toLocaleString() : '—'
             };
         });
 
         // Sort by violations (fewer = better), then by time taken
+        // We can just use violations for now as primary sort
         leaderboard.sort((a, b) => a.violations - b.violations);
+
+        // Assign rank
         leaderboard.forEach((entry, i) => entry.rank = i + 1);
 
         return NextResponse.json({ leaderboard });

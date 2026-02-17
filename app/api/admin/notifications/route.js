@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server';
-import { readDB, writeDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 // GET: Fetch all notifications
 export async function GET() {
     try {
-        const db = readDB();
-        return NextResponse.json({ notifications: db.notifications || [] });
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .order('timestamp', { ascending: false });
+
+        if (error) throw error;
+
+        // Format timestamp for frontend
+        const formatted = (data || []).map(n => ({
+            ...n,
+            timestamp: new Date(n.timestamp).toLocaleString()
+        }));
+
+        return NextResponse.json({ notifications: formatted });
     } catch (err) {
         console.error('Notifications GET error:', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -21,25 +33,21 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Title and message are required' }, { status: 400 });
         }
 
-        const db = readDB();
-        const notification = {
-            id: Date.now(),
-            title,
-            message,
-            timestamp: new Date().toLocaleString(),
-            read: false
-        };
+        const { data, error } = await supabase
+            .from('notifications')
+            .insert({ title, message })
+            .select()
+            .single();
 
-        db.notifications.push(notification);
-        db.logs.push({
-            timestamp: new Date().toLocaleString(),
+        if (error) throw error;
+
+        await supabase.from('logs').insert({
             action: 'Notification Sent',
             user: 'Admin',
             details: `Notification: "${title}"`
         });
-        writeDB(db);
 
-        return NextResponse.json({ success: true, notification });
+        return NextResponse.json({ success: true, notification: { ...data, timestamp: new Date(data.timestamp).toLocaleString() } });
     } catch (err) {
         console.error('Notifications POST error:', err);
         return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });

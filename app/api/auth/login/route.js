@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import Papa from 'papaparse';
-import { readDB, writeDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request) {
     try {
         const { email, password, searchOnly } = await request.json();
 
-        // Read and parse CSV
-        const csvPath = path.join(process.cwd(), 'public', 'users.csv');
-        const csvText = fs.readFileSync(csvPath, 'utf-8');
-        const { data: users } = Papa.parse(csvText, { header: true });
+        // 1. Fetch user from Supabase
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
 
-        const user = users.find(u => u.email === email);
+        if (userError && userError.code !== 'PGRST116') { // PGRST116 is "no rows found"
+            console.error('Fetch user error:', userError);
+            return NextResponse.json({ error: 'Database error' }, { status: 500 });
+        }
 
         // Search-only mode: return profile info without auth
         if (searchOnly) {
@@ -26,29 +28,55 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
-        // Check session limit
-        const db = readDB();
+        // 2. Check if user is blocked
+        const { data: blocked, error: blockedError } = await supabase
+            .from('blocked_users')
+            .select('email')
+            .eq('email', email)
+            .single();
 
-        // Check if user is blocked
-        if (db.blockedUsers?.includes(email)) {
+        if (blocked) {
             return NextResponse.json({ error: 'Your account has been blocked or restricted by the admin.' }, { status: 403 });
         }
 
-        const sessionCount = db.sessions[email] || 0;
+        // 3. Check session limit
+        const { data: session, error: sessionError } = await supabase
+            .from('sessions')
+            .select('count')
+            .eq('email', email)
+            .single();
+
+        const sessionCount = session ? session.count : 0;
 
         if (sessionCount >= 2) {
             return NextResponse.json({ error: 'Login limit reached (Max 2 sessions allowed)' }, { status: 403 });
         }
 
-        // Check if already completed
-        const hasCompleted = db.attempts.some(a => a.email === email && a.completed);
-        if (hasCompleted) {
+        // 4. Check if already completed
+        const { data: attempt, error: attemptError } = await supabase
+            .from('attempts')
+            .select('id')
+            .eq('email', email)
+            .eq('completed', true)
+            .limit(1);
+
+        if (attempt && attempt.length > 0) {
             return NextResponse.json({ error: 'You have already submitted this quiz. Re-attempts are not allowed.' }, { status: 403 });
         }
 
-        // Increment session
-        db.sessions[email] = sessionCount + 1;
-        writeDB(db);
+        // 5. Increment session count
+        if (session) {
+            await supabase.from('sessions').update({ count: sessionCount + 1 }).eq('email', email);
+        } else {
+            await supabase.from('sessions').insert({ email, count: 1 });
+        }
+
+        // 6. Log the action
+        await supabase.from('logs').insert({
+            action: 'Login Successful',
+            user: email,
+            details: 'User logged in to student portal'
+        });
 
         return NextResponse.json({
             email: user.email,
@@ -59,6 +87,6 @@ export async function POST(request) {
         });
     } catch (err) {
         console.error('Login API error:', err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }

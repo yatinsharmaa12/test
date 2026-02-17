@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
-import { readDB, writeDB } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 // GET: Return quiz questions
 export async function GET() {
     try {
-        const db = readDB();
-        return NextResponse.json({ questions: db.questions || [] });
+        const { data, error } = await supabase
+            .from('questions')
+            .select('*')
+            .order('id', { ascending: true });
+
+        if (error) throw error;
+        return NextResponse.json({ questions: data || [] });
     } catch (err) {
         console.error('Questions GET error:', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -21,26 +26,25 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Question, options (min 2), and correct answer index are required' }, { status: 400 });
         }
 
-        const db = readDB();
-        const maxId = db.questions.reduce((max, question) => Math.max(max, question.id || 0), 0);
+        const { data, error } = await supabase
+            .from('questions')
+            .insert({
+                q,
+                options,
+                correct: Number(correct)
+            })
+            .select()
+            .single();
 
-        const question = {
-            id: maxId + 1,
-            q,
-            options,
-            correct: Number(correct)
-        };
+        if (error) throw error;
 
-        db.questions.push(question);
-        db.logs.push({
-            timestamp: new Date().toLocaleString(),
+        await supabase.from('logs').insert({
             action: 'Question Added',
             user: 'Admin',
             details: `New question: "${q.substring(0, 50)}..."`
         });
-        writeDB(db);
 
-        return NextResponse.json({ success: true, question });
+        return NextResponse.json({ success: true, question: data });
     } catch (err) {
         console.error('Questions POST error:', err);
         return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
@@ -56,21 +60,27 @@ export async function DELETE(request) {
             return NextResponse.json({ error: 'Question ID is required' }, { status: 400 });
         }
 
-        const db = readDB();
-        const questionIdx = db.questions.findIndex(q => q.id === id);
+        // Fetch question first for logging
+        const { data: question } = await supabase
+            .from('questions')
+            .select('q')
+            .eq('id', id)
+            .single();
 
-        if (questionIdx === -1) {
-            return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+        const { error } = await supabase
+            .from('questions')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        if (question) {
+            await supabase.from('logs').insert({
+                action: 'Question Deleted',
+                user: 'Admin',
+                details: `Deleted question: "${question.q.substring(0, 50)}..."`
+            });
         }
-
-        const removed = db.questions.splice(questionIdx, 1)[0];
-        db.logs.push({
-            timestamp: new Date().toLocaleString(),
-            action: 'Question Deleted',
-            user: 'Admin',
-            details: `Deleted question: "${removed.q.substring(0, 50)}..."`
-        });
-        writeDB(db);
 
         return NextResponse.json({ success: true });
     } catch (err) {
