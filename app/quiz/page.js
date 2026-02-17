@@ -290,34 +290,44 @@ export default function QuizPage() {
                     {questions[currentQuestion].options.map((opt, i) => (
                         <div key={i} className={`option-card ${answers[currentQuestion] === i ? 'selected' : ''}`} onClick={() => {
                             setAnswers(prev => ({ ...prev, [currentQuestion]: i }));
-                            if (currentQuestion < questions.length - 1) {
-                                setCurrentQuestion(curr => curr + 1);
-                                setWarning(null);
-                            } else {
-                                // We don't call finishQuiz immediately to allow review? 
-                                // Actually the current logic proceeds to next. Let's stick to it but ensure score is calculated.
-                                // Instead of finishQuiz here, maybe we need a "Submit" button on last question.
-                                // But I will follow the existing flow: last click = submit.
-
-                                // To be safe, let's update state AND then finish.
-                                // However, state update is async. Let's pass the final answers locally.
-                                const finalAnswers = { ...answers, [currentQuestion]: i };
-
-                                // Calculate score locally for the final submit
-                                let score = 0;
-                                questions.forEach((q, idx) => {
-                                    if (finalAnswers[idx] === q.correct) {
-                                        score++;
-                                    }
-                                });
-
-                                // Define local finish to avoid state lag
-                                finishQuiz(finalAnswers);
-                            }
+                            setWarning(null);
                         }}>
                             {opt}
                         </div>
                     ))}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2.5rem' }}>
+                        <button
+                            className="btn-outline"
+                            onClick={() => setCurrentQuestion(curr => Math.max(0, curr - 1))}
+                            disabled={currentQuestion === 0}
+                            style={{ opacity: currentQuestion === 0 ? 0.5 : 1 }}
+                        >
+                            Previous
+                        </button>
+
+                        {currentQuestion < questions.length - 1 ? (
+                            <button
+                                className="btn"
+                                onClick={() => setCurrentQuestion(curr => curr + 1)}
+                            >
+                                Next Question
+                            </button>
+                        ) : (
+                            <button
+                                className="btn"
+                                style={{ background: '#16a34a' }}
+                                onClick={() => {
+                                    if (confirm('Are you sure you want to submit your quiz?')) {
+                                        finishQuiz();
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
+                            </button>
+                        )}
+                    </div>
 
                     <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                         <p>Logged in: {user.email}</p>

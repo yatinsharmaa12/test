@@ -61,7 +61,7 @@ export async function POST(request) {
         const { data: attempt, error: attemptError } = await supabase
             .from('attempts')
             .select('id')
-            .eq('email', email)
+            .eq('email', email.trim())
             .eq('completed', true)
             .limit(1);
 

@@ -44,13 +44,15 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
         }
         const { email } = await request.json();
+        const now = new Date().toISOString();
 
         const { data, error } = await supabase
             .from('attempts')
             .insert({
-                email,
+                email: email.trim(),
                 violations: 0,
-                completed: false
+                completed: false,
+                start_time: now
             })
             .select()
             .single();
@@ -83,14 +85,18 @@ export async function PUT(request) {
         const { data: latestAttempt, error: findError } = await supabase
             .from('attempts')
             .select('*')
-            .eq('email', email)
+            .eq('email', email.trim())
             .eq('completed', false)
             .order('start_time', { ascending: false })
             .limit(1)
             .single();
 
         if (findError || !latestAttempt) {
-            console.error('Find attempt error:', findError);
+            console.error('[Attempts API] No active attempt found for:', email, findError?.message);
+            // If they are trying to complete but no active attempt, maybe it already completed?
+            if (completed) {
+                return NextResponse.json({ success: true, message: 'Attempt already completed or not found' });
+            }
             return NextResponse.json({ error: 'No active attempt found' }, { status: 404 });
         }
 
