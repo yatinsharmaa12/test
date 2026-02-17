@@ -1,14 +1,77 @@
 {
   "attempts": [
     {
-      "email": "test@example.com",
-      "startTime": "2/17/2026, 4:26:39 AM",
+      "email": "user1@test.com",
+      "startTime": "2/17/2026, 2:12:40 PM",
       "violations": 0,
       "completed": true,
-      "endTime": "2/17/2026, 4:26:41 AM"
+      "endTime": "2/17/2026, 2:12:42 PM"
     }
   ],
   "sessions": {
-    "test@example.com": 1
-  }
+    "user1@test.com": 1
+  },
+  "notifications": [],
+  "blockedUsers": [],
+  "logs": [
+    {
+      "timestamp": "2/17/2026, 2:12:40 PM",
+      "action": "Quiz Started",
+      "user": "user1@test.com",
+      "details": "User started quiz attempt"
+    },
+    {
+      "timestamp": "2/17/2026, 2:12:42 PM",
+      "action": "Quiz Submitted",
+      "user": "user1@test.com",
+      "details": "User completed quiz"
+    },
+    {
+      "timestamp": "2/17/2026, 2:24:35 PM",
+      "action": "User Blocked",
+      "user": "test@example.com",
+      "details": "User blocked by admin"
+    },
+    {
+      "timestamp": "2/17/2026, 2:24:41 PM",
+      "action": "User Unblocked",
+      "user": "test@example.com",
+      "details": "User unblocked by admin"
+    }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "q": "Which property is used in CSS to detect user's color scheme preference?",
+      "options": [
+        "@media (prefers-color-scheme)",
+        "@theme",
+        "color-query",
+        "scheme-detect"
+      ],
+      "correct": 0
+    },
+    {
+      "id": 2,
+      "q": "What does the screen sharing API primarily provide for anti-cheating?",
+      "options": [
+        "Remote control",
+        "Visual record of activity",
+        "Keyboard logging",
+        "IP tracking"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 3,
+      "q": "Which event is triggered when a user switches tabs in a browser?",
+      "options": [
+        "tabchange",
+        "visibilitychange",
+        "window-switch",
+        "blur-detect"
+      ],
+      "correct": 1
+    }
+  ]
 }
